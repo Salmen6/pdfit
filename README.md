@@ -35,7 +35,7 @@ pip install pdfit
 ## Usage
 ```bash
 # Convert current directory
-pdfit
+pdfit .
 
 # Specify a directory
 pdfit /path/to/project
