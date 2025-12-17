@@ -13,6 +13,8 @@ setup(
     author='Salmen Makki',  
     author_email='salmenmakki.dev@gmail.com', 
     url='https://github.com/salmen6/pdfit', 
+    license='MIT',
+    license_files=('LICENSE',),
     packages=find_packages(),
     install_requires=[
         'fpdf2>=2.7.0',
@@ -38,7 +40,7 @@ setup(
     python_requires='>=3.8',
     keywords='pdf code converter cli documentation',
     project_urls={
-        'Bug Reports': 'https://github.com/yourusername/pdfit/issues',
-        'Source': 'https://github.com/yourusername/pdfit',
+        'Bug Reports': 'https://github.com/Salmen6/pdfit/issues',
+        'Source': 'https://github.com/Salmen6/pdfit',
     },
 )

@@ -13,7 +13,7 @@ def generate_pdf(projects_data, output_path):
         pdf.cell(0,10,txt=project['project_name'],ln=True)
         pdf.ln(10)
         pdf.set_font('DejaVu',size=13)
-        pdf.cell(0,5,txt='plan: ',ln=True)
+        pdf.cell(0,5,txt='Table of contents: ',ln=True)
         pdf.ln(5)
         for file in project['files']:
             pdf.set_font('DejaVu',size=11)

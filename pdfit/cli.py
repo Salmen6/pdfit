@@ -5,7 +5,7 @@ from pdfit.scanner import scan_directory
 from pdfit.filter import should_include_file
 from pdfit.reader import read_file
 from pdfit.pdf import generate_pdf
-
+import subprocess
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
@@ -43,7 +43,37 @@ def parse_arguments():
         help='File extensions to exclude'
     )
     
+    parser.add_argument(
+        '--git',
+        action='store_true',
+        help='Convert only the files tracked by Git'
+    )
     return parser.parse_args()
+
+
+def get_git_files(project_path):
+
+    result = subprocess.run(
+        ['git', 'ls-files'],
+        cwd=project_path,
+        capture_output=True,
+        text=True
+    )
+    
+
+    if result.returncode != 0:
+        return None  # Not a git repo
+    
+
+    relative_files = result.stdout.strip().split('\n')
+    
+
+    absolute_files = []
+    for rel_file in relative_files:
+        abs_file = os.path.join(project_path, rel_file)
+        absolute_files.append(abs_file)
+    
+    return absolute_files
 
 def main():
     args = parse_arguments()
@@ -121,6 +151,7 @@ def main():
     user_includes = args.extensions or []
     config['included_extensions'].extend(user_includes)
 
+
     # for file_path in scan_directory(path):
     #     print(file_path)
 
@@ -141,10 +172,18 @@ def main():
 
     print("\nCollecting files...")
     projects_data = []
-    for path in  paths:
+    for path in paths:
         project_name = os.path.basename(os.path.abspath(path))
-        project_files =[]
-        for file_path in scan_directory(path):
+        project_files = []
+        if args.git:
+            files_to_scan = get_git_files(path)
+            if files_to_scan is None:
+                print(f"Warning: {path} is not a git repository, scanning all files")
+                files_to_scan = scan_directory(path)
+        else:
+            # Normal mode: scan all files
+            files_to_scan = scan_directory(path)
+        for file_path in files_to_scan:
             if should_include_file(file_path, config):
                 content = read_file(file_path)
                 if content is not None:
