@@ -14,10 +14,10 @@ def parse_arguments():
     )
     
     parser.add_argument(
-        'path',
-        nargs='?',
+        'paths',
+        nargs='+',
         default='.',
-        help='Project directory to convert'
+        help='Convert one Directory or multiple into one Pdf Document'
     )
     
     parser.add_argument(
@@ -56,25 +56,28 @@ def main():
 #    print(f"Exclude-ext: {args.exclude_ext}")
 
 
-    path = args.path
-    if os.path.exists(path) and not os.path.isdir(path):
-        print(f"path {path}  exists but it's not a folder")
-        sys.exit(1)
-    elif not os.path.exists(path):
-        print(f"path {path} does not exist")
-        sys.exit(1)
-    elif os.path.isdir(path):
-        print(f"path {path} exits and it's a folder")
+    paths = args.paths
+    for path in paths:
+        if os.path.exists(path) and not os.path.isdir(path):
+            print(f"path {path}  exists but it's not a folder")
+            sys.exit(1)
+        elif not os.path.exists(path):
+            print(f"path {path} does not exist")
+            sys.exit(1)
+        elif os.path.isdir(path):
+            print(f"path {path} exits and it's a folder")
 
-    abs_path = os.path.abspath(path)
-    current_directory = os.path.basename(abs_path)
+    abs_paths = [os.path.abspath(p) for p in paths]
+    current_directories = [os.path.basename(absp) for absp in abs_paths]
 
 
-    if args.output is None:
-        output_filename= current_directory + '.pdf'
+    if args.output is not  None:
+        output_filename= args.output + '.pdf'
     else:
-        output_filename = args.output + '.pdf'
-    print(output_filename)
+        if len(paths) ==1:
+            output_filename = current_directories[0] + '.pdf'
+        else:
+            output_filename = 'combined.pdf'
 
     config = {
     'excluded_dirs': [
@@ -105,7 +108,7 @@ def main():
         '.mp4','.mov','.avi','.mkv',
         '.mp3','.wav','.ogg',
         '.ttf','.otf','.woff','.woff2',
-        '.pdf'
+        '.pdf' 
     ],
     'included_extensions': []
     }
@@ -137,19 +140,26 @@ def main():
     #             print(f"  ✗ Failed to read: {file_path}")
 
     print("\nCollecting files...")
-    files_data = []
-    for file_path in scan_directory(path):
-        if should_include_file(file_path, config):
-            content = read_file(file_path)
-            if content is not None:
-                files_data.append({
-                    'path': file_path,
-                    'content': content
-                })
-                print(f"  ✓ Added: {file_path}")
+    projects_data = []
+    for path in  paths:
+        project_name = os.path.basename(os.path.abspath(path))
+        project_files =[]
+        for file_path in scan_directory(path):
+            if should_include_file(file_path, config):
+                content = read_file(file_path)
+                if content is not None:
+                    project_files.append({
+                        'path': file_path,
+                        'content': content
+                    })
+                    print(f"  ✓ Added: {file_path}")
+        projects_data.append({
+        'project_name': project_name,
+        'files': project_files
+        })
 
     print(f"\nGenerating PDF: {output_filename}")
-    generate_pdf(files_data, output_filename)
+    generate_pdf(projects_data, output_filename)
     print(f"✓ PDF created successfully: {output_filename}")
 
     return 0
