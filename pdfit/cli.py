@@ -5,6 +5,7 @@ from pdfit.scanner import scan_directory
 from pdfit.filter import should_include_file
 from pdfit.reader import read_file
 from pdfit.pdf import generate_pdf
+from pdfit.markdown import generate_md
 import subprocess
 
 def parse_arguments():
@@ -48,6 +49,11 @@ def parse_arguments():
         action='store_true',
         help='Convert only the files tracked by Git'
     )
+    parser.add_argument(
+        '--md',
+        action='store_true',
+        help='convert files to a markdown file'
+        )
     return parser.parse_args()
 
 
@@ -101,14 +107,22 @@ def main():
     current_directories = [os.path.basename(absp) for absp in abs_paths]
 
 
-    if args.output is not  None:
-        output_filename= args.output + '.pdf'
+    if args.output is not None:
+        output_filename = args.output
     else:
-        if len(paths) ==1:
-            output_filename = current_directories[0] + '.pdf'
+        # Generate default name
+        if len(paths) == 1:
+            output_filename = current_directories[0]
         else:
-            output_filename = 'combined.pdf'
+            output_filename = 'combined'
 
+    if not args.md:
+        output_filename += '.pdf'
+    else:
+        output_filename += '.md'
+
+
+        
     config = {
     'excluded_dirs': [
         '__pycache__','node_modules','venv','.venv','env',
@@ -196,9 +210,16 @@ def main():
         'project_name': project_name,
         'files': project_files
         })
+        
+    if  not args.md :
+        print(f"\nGenerating PDF: {output_filename}")
+        generate_pdf(projects_data, output_filename)
+        print(f"✓ PDF created successfully: {output_filename}")
 
-    print(f"\nGenerating PDF: {output_filename}")
-    generate_pdf(projects_data, output_filename)
-    print(f"✓ PDF created successfully: {output_filename}")
+    else:
+        print(f"\nGenerating MarkDown: {output_filename}")
+        generate_md(projects_data, output_filename)
+        print(f"✓ MarkDown created successfully: {output_filename}")
 
     return 0
+    

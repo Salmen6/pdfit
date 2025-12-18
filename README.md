@@ -1,23 +1,43 @@
 # pdfit
 
-Convert your code projects into clean, readable PDF documents.
+Convert your code projects into clean, shareable documents — PDF or Markdown.
 
 ## Features
 
 - 🔍 Recursively scans project directories
 - 🎯 Smart filtering (exclude node_modules, .git, etc.)
-- 📝 Preserves code formatting with monospace fonts
+- 📄 **Dual format support** - Generate PDF or Markdown
+- 📝 Preserves code formatting with syntax highlighting
 - 🌍 Full Unicode support (emojis, special characters)
 - ⚙️ Configurable via command-line options
-- 📚 **Multi-repository support** - Combine multiple projects into one PDF
+- 📚 **Multi-repository support** - Combine multiple projects into one document
 - 📑 **Table of contents** - Auto-generated file listing per project
 - 🔗 **Git integration** - Only include Git-tracked files
+
+## Output Formats
+
+### PDF (Default)
+**Best for**: Presentations, portfolios, printing, sharing with humans
+
+- Professional formatting with monospace fonts
+- Print-ready documents
+- Portable and consistent rendering
+- Requires DejaVu fonts (pre-installed on most Linux systems)
+
+### Markdown (with `--md` flag)
+**Best for**: AI code review, ChatGPT/Claude, quick sharing, version control
+
+- Native syntax highlighting
+- Lightweight and searchable
+- Easy copy-paste to AI tools
+- Git-friendly (text-based, diffable)
+- No font dependencies
 
 ## Requirements
 
 - Linux or WSL (Windows Subsystem for Linux)
 - Python 3.8+
-- DejaVu fonts (usually pre-installed on Linux)
+- DejaVu fonts (for PDF output, usually pre-installed on Linux)
 - Git (optional, for `--git` flag)
 
 ## Installation
@@ -36,16 +56,17 @@ pip install pdfit
 
 ## Usage
 ```bash
-# Convert current directory
-pdfit
+# Convert to PDF (default)
+pdfit .
 
-# Specify a directory
-pdfit /path/to/project
+# Convert to Markdown
+pdfit . --md
 
-# Custom output filename
-pdfit /path/to/project -o myproject
+# Specify output filename
+pdfit /path/to/project -o myproject        # Creates myproject.pdf
+pdfit /path/to/project -o mycode --md      # Creates mycode.md
 
-# Multiple projects (creates combined PDF)
+# Multiple projects
 pdfit /path/to/project1 /path/to/project2
 
 # Only Git-tracked files
@@ -54,40 +75,58 @@ pdfit . --git
 # Include only specific extensions
 pdfit . -e py js html
 
-# Exclude additional directories
+# Exclude directories
 pdfit . --exclude dist build temp
 
 # Exclude file extensions
 pdfit . --exclude-ext log tmp
 
-# Combine multiple projects with filters
-pdfit ~/frontend ~/backend -e py js html -o fullstack
-
-# Git-tracked files with extension filter
-pdfit . --git -e py js
+# Combine multiple features
+pdfit ~/frontend ~/backend --git -e py js --md -o fullstack
 ```
 
 ## Examples
-```bash
-# Python project with only .py files
-pdfit ~/myproject -e py -o python_code
 
-# Web project (HTML, CSS, JS)
+### PDF Output
+```bash
+# Python project documentation
+pdfit ~/myproject -e py -o python_docs
+
+# Web project with HTML, CSS, JS
 pdfit ~/website -e html css js
 
+# Professional portfolio
+pdfit ~/portfolio --git -o showcase
+```
+
+### Markdown Output (For AI Review)
+```bash
+# Send to ChatGPT/Claude for review
+pdfit . --md -o codebase
+# Upload codebase.md to AI tool
+
+# Only committed Python code for AI analysis
+pdfit . --git -e py --md -o review
+
+# Multi-repo codebase for AI
+pdfit ~/api ~/frontend ~/backend --md -o full_project
+
+# Quick code snapshot for sharing
+pdfit . --git --md -o current_state
+```
+
+### Advanced Usage
+```bash
 # Exclude test directories
 pdfit . --exclude tests __pycache__
 
-# Only committed files (Git-tracked)
+# Only committed files (clean output)
 pdfit . --git -o clean_codebase
 
 # Multiple repos, only Git-tracked Python files
-pdfit ~/api ~/frontend --git -e py -o backend_code
+pdfit ~/api ~/frontend --git -e py --md
 
-# Combine multiple repositories for code review
-pdfit ~/api ~/frontend ~/backend -o full_codebase
-
-# Multiple microservices in one document
+# Microservices documentation
 pdfit ~/service1 ~/service2 ~/service3 -e py -o microservices
 ```
 
@@ -104,27 +143,27 @@ The `--git` flag enables Git-aware scanning:
 - **Code reviews** - Only show committed code, not temporary files
 - **Documentation** - Generate docs from production code only
 - **Clean snapshots** - Exclude build artifacts, logs, and local config files
-- **Multi-repo** - Works seamlessly with multiple repositories
+- **AI analysis** - Send only production code to AI tools
 
 ### Example Workflow
 ```bash
 # Your working directory has uncommitted experiments
-pdfit . -o messy.pdf              # Includes everything
+pdfit .              # Includes everything
 
 # Only committed code
-pdfit . --git -o clean.pdf        # Only Git-tracked files
+pdfit . --git        # Only Git-tracked files
 
-# Multiple repos, only committed Python code
-pdfit ~/api ~/worker --git -e py
+# For AI review: committed code as markdown
+pdfit . --git --md -o review
 ```
 
 **Note**: Requires Git to be installed and the directory to be a Git repository. Non-Git directories will show a warning and use normal scanning.
 
 ## Multi-Repository Support
 
-When processing multiple projects, pdfit creates a well-organized PDF with:
+When processing multiple projects, pdfit creates well-organized documents with:
 - **Project headers** - Clear visual separation between projects
-- **Table of contents** - List of all files per project
+- **Table of contents** - List of all files per project  
 - **Grouped content** - All files from each project together
 
 Perfect for:
@@ -132,6 +171,7 @@ Perfect for:
 - Documentation of related projects
 - AI-assisted analysis of multi-repo codebases
 - Portfolio presentations
+- Microservices documentation
 
 ## Default Exclusions
 
@@ -142,20 +182,41 @@ The tool automatically excludes:
 
 ## Output Files
 
+### PDF Format (Default)
 - Single directory: `<directory_name>.pdf`
 - Multiple directories: `combined.pdf`
-- Custom output: Use `-o filename` (`.pdf` extension added automatically)
+- Custom: `-o filename` creates `filename.pdf`
+
+### Markdown Format (with `--md`)
+- Single directory: `<directory_name>.md`
+- Multiple directories: `combined.md`
+- Custom: `-o filename --md` creates `filename.md`
 
 ## Command-Line Options
 
 | Option | Description |
 |--------|-------------|
 | `paths` | One or more directories to convert (positional) |
-| `-o`, `--output` | Custom output filename |
+| `-o`, `--output` | Custom output filename (extension added automatically) |
 | `-e`, `--extensions` | Include only specific file extensions |
 | `--exclude` | Exclude additional directories or files |
 | `--exclude-ext` | Exclude specific file extensions |
 | `--git` | Only include Git-tracked files |
+| `--md` | Generate Markdown instead of PDF |
+
+## Use Case Guide
+
+**Choose PDF when**:
+- Presenting to stakeholders or clients
+- Creating portfolio documentation
+- Printing physical copies
+- Formal code reviews
+
+**Choose Markdown when**:
+- Sending code to AI tools (ChatGPT, Claude, etc.)
+- Quick code sharing with developers
+- Version controlling documentation
+- Lightweight file size needed
 
 ## License
 
