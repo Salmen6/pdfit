@@ -1,17 +1,18 @@
 import argparse
 import os
 import sys
+import subprocess
+import questionary
+import time
 from pdfit.scanner import scan_directory
 from pdfit.filter import should_include_file
 from pdfit.reader import read_file
 from pdfit.pdf import generate_pdf
 from pdfit.markdown import generate_md
-import subprocess
-
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
-        description='Convert code project to PDF',
+        description='Convert code project to PDF or Markdown',
         prog='pdfit'
     )
     
@@ -19,18 +20,24 @@ def parse_arguments():
         'paths',
         nargs='+',
         default='.',
-        help='Convert one Directory or multiple into one Pdf Document'
+        help='Convert one Directory or multiple into one Document'
     )
     
     parser.add_argument(
         '-o', '--output',
-        help='Output PDF filename'
+        help='Output filename'
     )
     
     parser.add_argument(
         '-e', '--extensions',
         nargs='*',
         help='File extensions to include (e.g., py js html)'
+    )
+    
+    parser.add_argument(
+        '-i', '--interactive',
+        action='store_true',
+        help='Interactively choose which files to include'
     )
     
     parser.add_argument(
@@ -54,11 +61,10 @@ def parse_arguments():
     parser.add_argument(
         '--md',
         action='store_true',
-        help='convert files to a markdown file'
+        help='Convert files to a markdown file'
     )
     
     return parser.parse_args()
-
 
 def get_git_files(project_path):
     result = subprocess.run(
@@ -71,15 +77,7 @@ def get_git_files(project_path):
     if result.returncode != 0:
         return None
     
-    relative_files = result.stdout.strip().split('\n')
-    
-    absolute_files = []
-    for rel_file in relative_files:
-        abs_file = os.path.join(project_path, rel_file)
-        absolute_files.append(abs_file)
-    
-    return absolute_files
-
+    return result.stdout.strip().split('\n')
 
 def format_file_size(size_bytes):
     if size_bytes < 1024:
@@ -91,133 +89,97 @@ def format_file_size(size_bytes):
         mb = size_bytes / (1024 * 1024)
         return f"{mb:.1f} MB"
 
-
 def display_summary(stats, projects_data, output_filename):
     file_size = os.path.getsize(output_filename)
-    
     print("\nSummary:")
     print(f"  Projects processed: {len(projects_data)}")
     print(f"  Files included: {stats['files_count']}")
     print(f"  Total lines of code: {stats['total_lines']:,}")
     print(f"  Output size: {format_file_size(file_size)}")
 
-
 def main():
     args = parse_arguments()
     
-    paths = args.paths
-    for path in paths:
-        if os.path.exists(path) and not os.path.isdir(path):
-            print(f"path {os.path.abspath(path)} exists but it's not a folder")
+    for path in args.paths:
+        if not os.path.exists(path):
+            print(f"Error: Path {os.path.abspath(path)} does not exist")
             sys.exit(1)
-        elif not os.path.exists(path):
-            print(f"path {os.path.abspath(path)} does not exist")
-            sys.exit(1)
-        elif os.path.isdir(path):
-            print(f"path {os.path.abspath(path)} exits and it's a folder")
     
-    abs_paths = [os.path.abspath(p) for p in paths]
-    current_directories = [os.path.basename(absp) for absp in abs_paths]
+    abs_paths = [os.path.abspath(p) for p in args.paths]
     
-    if args.output is not None:
+    # Determine output filename
+    if args.output:
         output_filename = args.output
     else:
-        if len(paths) == 1:
-            output_filename = current_directories[0]
-        else:
-            output_filename = 'combined'
+        output_filename = os.path.basename(abs_paths[0]) if len(abs_paths) == 1 else 'combined'
     
-    if not args.md:
-        output_filename += '.pdf'
-    else:
-        output_filename += '.md'
+    output_filename += '.md' if args.md else '.pdf'
     
     config = {
-        'excluded_dirs': [
-            '__pycache__', 'node_modules', 'venv', '.venv', 'env',
-            '.git', '.hg', '.svn',
-            '.idea', '.vscode', '.settings',
-            'dist', 'build', 'out', '.output', 'target',
-            '.pytest_cache', '.mypy_cache', '.ruff_cache',
-            '.npm', '.yarn', '.pnpm-store',
-            '.gradle', '.tox', '.cache', '.coverage',
-            '__MACOSX', '.metadata'
-        ],
-        'excluded_files': [
-            '.env', '.env.local', '.env.development', '.env.production',
-            '.DS_Store', 'Thumbs.db',
-            '.npmrc', '.yarnrc', '.editorconfig',
-            'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml',
-            'poetry.lock', 'Pipfile.lock', 'composer.lock',
-            '.gitignore', '.gitattributes', '.gitmodules',
-            'nohup.out'
-        ],
-        'excluded_extensions': [
-            '.pyc', '.pyo', '.class', '.o', '.a',
-            '.exe', '.dll', '.so', '.dylib',
-            '.zip', '.tar', '.gz', '.bz2', '.7z', '.rar',
-            '.log', '.tmp', '.swp', '.bak', '.cache',
-            '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg', '.ico', '.webp',
-            '.mp4', '.mov', '.avi', '.mkv',
-            '.mp3', '.wav', '.ogg',
-            '.ttf', '.otf', '.woff', '.woff2',
-            '.pdf'
-        ],
-        'included_extensions': []
+        'excluded_dirs': ['__pycache__', 'node_modules', 'venv', '.venv', '.git', 'dist', 'build', 'target'],
+        'excluded_files': ['.env', '.DS_Store', 'package-lock.json', 'yarn.lock', '.gitignore'],
+        'excluded_extensions': ['.pyc', '.exe', '.dll', '.log', '.png', '.jpg', '.pdf'],
+        'included_extensions': args.extensions or []
     }
     
-    user_excludes = args.exclude or []
-    config['excluded_dirs'].extend(user_excludes)
-    user_excludes_ext = args.exclude_ext or []
-    config['excluded_extensions'].extend(user_excludes_ext)
-    user_includes = args.extensions or []
-    config['included_extensions'].extend(user_includes)
+    if args.exclude: config['excluded_dirs'].extend(args.exclude)
+    if args.exclude_ext: config['excluded_extensions'].extend(args.exclude_ext)
     
-    print("\nCollecting files...")
     projects_data = []
     stats = {'files_count': 0, 'total_lines': 0}
     
-    for path in paths:
+    for path in args.paths:
         project_name = os.path.basename(os.path.abspath(path))
-        project_files = []
+        candidates = []
         
+        # 1. Scan for candidates
         if args.git:
-            files_to_scan = get_git_files(path)
-            if files_to_scan is None:
-                print(f"Warning: {path} is not a git repository, scanning all files")
-                files_to_scan = scan_directory(path)
+            files_to_scan = get_git_files(path) or list(scan_directory(path))
         else:
-            files_to_scan = scan_directory(path)
+            files_to_scan = list(scan_directory(path))
         
-        for file_path in files_to_scan:
-            if should_include_file(file_path, config):
-                content = read_file(file_path)
-                if content is not None:
-                    project_files.append({
-                        'path': file_path,
-                        'content': content
-                    })
-                    
-                    
-                    stats['files_count'] += 1
-                    stats['total_lines'] += len(content.splitlines())
-                    
-                    print(f"  ✓ Added: {file_path}")
+        for f in files_to_scan:
+            if should_include_file(f, config):
+                candidates.append(f)
+
+        # 2. Interactive Selection
+        if args.interactive and candidates:
+            print(f"\n[Tip] Use the Arrow Keys to navigate, SPACE to check/uncheck, and ENTER to confirm.")
+            print(f"Loading files for '{project_name}'...")
+            
+            time.sleep(2)
+            selected_files = questionary.checkbox(
+                f"Select files for project '{project_name}':",
+                choices=[questionary.Choice(c, checked=True) for c in candidates]
+            ).ask()
+            if selected_files is None: return 0 # User cancelled
+        else:
+            selected_files = candidates
+
+        # 3. Process Selection
+        project_files = []
+        for file_rel_path in selected_files:
+            full_path = os.path.join(path, file_rel_path)
+            content = read_file(full_path)
+            if content is not None:
+                project_files.append({'path': file_rel_path, 'content': content})
+                stats['files_count'] += 1
+                stats['total_lines'] += len(content.splitlines())
+                print(f"  ✓ Added: {file_rel_path}")
         
-        projects_data.append({
-            'project_name': project_name,
-            'files': project_files
-        })
+        projects_data.append({'project_name': project_name, 'files': project_files})
     
-    if not args.md:
-        print(f"\nGenerating PDF: {output_filename}")
-        generate_pdf(projects_data, output_filename)
-        print(f"✓ PDF created successfully: {output_filename}")
-    else:
-        print(f"\nGenerating Markdown: {output_filename}")
+    if not projects_data[0]['files']:
+        print("No files selected. Exiting.")
+        return 0
+
+    if args.md:
         generate_md(projects_data, output_filename)
-        print(f"✓ Markdown created successfully: {output_filename}")
-    
+    else:
+        generate_pdf(projects_data, output_filename)
+        
     display_summary(stats, projects_data, output_filename)
-    
     return 0
+
+if __name__ == "__main__":
+    sys.exit(main())
