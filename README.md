@@ -83,6 +83,9 @@ pdfit . --exclude-ext log tmp
 
 # Combine multiple features
 pdfit ~/frontend ~/backend --git -e py js --md -o fullstack
+
+Interactive Mode (Check/Uncheck files manually)
+pdfit . -i
 ```
 
 ## Examples
@@ -203,6 +206,7 @@ The tool automatically excludes:
 | `--exclude-ext` | Exclude specific file extensions |
 | `--git` | Only include Git-tracked files |
 | `--md` | Generate Markdown instead of PDF |
+| `-i`, `--interactive`	| Launch the interactive file selection menu |
 
 ## Use Case Guide
 
