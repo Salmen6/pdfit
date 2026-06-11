@@ -1,3 +1,15 @@
+# ⚠️ Project Notice
+
+**pdfit is no longer actively developed and has evolved into SCTX.**
+
+For new features, updates, and ongoing development, please use **SCTX**:
+
+👉 https://github.com/Salmen6/sctx
+
+This repository remains available for historical reference and users who specifically need the original pdfit functionality.
+
+---
+
 # pdfit
 
 Convert your code projects into clean, shareable documents — PDF or Markdown.
